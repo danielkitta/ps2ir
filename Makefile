@@ -5,7 +5,7 @@ PICLINK = gplink
 
 PROCESSOR = 12f1571
 PICASMFLAGS = -p $(PROCESSOR)
-PICLINKFLAGS = -m -s $(PROCESSOR).lkr
+PICLINKFLAGS = -O2 -m -s $(PROCESSOR).lkr
 
 OBJECTS = irdecode.o keyboard.o keycodes.o main.o ps2io.o util.o
 
@@ -21,6 +21,7 @@ ps2ir.hex: $(OBJECTS)
 	$(PICLINK) $(PICLINKFLAGS) -o $@ $(OBJECTS)
 
 $(OBJECTS): common.inc
+keycodes.o: keycodes.inc
 ps2io.o: util.inc
 
 .asm.o:

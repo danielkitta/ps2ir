@@ -4,6 +4,7 @@
                 subtitle "IR key scancode map"
 
                 include "common.inc"
+                include "keycodes.inc"
 
 ; This scancode table maps the codes used by the @sat satellite receiver.
 ; The One For All remote direct setup code for this device is 1300 (SAT).
