@@ -104,9 +104,6 @@ KEYNEXTTRACK    equ     h'4D' | 1<<KEYEXTBIT
 KEYVOLDOWN      equ     h'21' | 1<<KEYEXTBIT
 KEYRECORD       equ     h'63' | 1<<KEYEXTBIT
 
-; Special keyboard protocol codes
-RESTESTPASS     equ     h'AA'           ; self test passed
-
 ; Pin assignments
 IRDET           equ     RA4             ; IR detector input pin
 PS2CLK          equ     RA1             ; PS/2 clock pin

@@ -16,6 +16,7 @@ CMDSETLEDS      equ     h'ED'                   ; set keyboard LEDs
 CMDCODESET      equ     h'F0'                   ; get/set scancode set
 
 ; Response codes
+RESTESTPASS     equ     h'AA'                   ; self test passed
 RESECHO         equ     h'EE'                   ; echo reply
 RESACK          equ     h'FA'                   ; command acknowledged
 RESRESEND       equ     h'FE'                   ; request for resend
@@ -77,7 +78,19 @@ kbreset:        movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
                 banksel KBSTAT                  ; bank 0
                 return
 
-                global  kbreset
+; Keyboard power-on reset.
+; This does a reset and then places the code for "self-test passed" into
+; the output queue.
+; Pre    : bank 0 active, ints off
+; Post   : bank 0 active, ints off
+; Output : IRSTAT, KBSTAT
+; Scratch: WREG, STATUS
+;
+kbpoweron:      call    kbreset
+                movlw   RESTESTPASS
+                goto    kbqueuebyte             ; queue self-test passed
+
+                global  kbpoweron
 
 ; Check if the output queue has enough space left for a number of bytes
 ; about to be queued. If there is not enough space left, the error code
@@ -106,8 +119,6 @@ kbwantqueue:    btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
                 bsf     KBSTAT, KBOVERFLOW      ; indicate overflow
                 movlw   RESERROR                ; queue error response
 
-                global  kbwantqueue
-
 ; Append a byte to the keyboard output queue.
 ; Pre    : bank 0 active
 ; Post   : bank 0 active
@@ -127,8 +138,6 @@ kbqueuebyte:    movwf   ARG0                    ; save byte to be queued
 
                 bsf     KBSTAT, KBQUEUED        ; indicate data availability
                 return
-
-                global  kbqueuebyte
 
 ; Routine invoked on a request from the host.
 ; Pre    : bank 0 active

@@ -16,8 +16,7 @@
                 extern  irhandlecmd
                 extern  irpulseevent
                 extern  kbhandlecmd
-                extern  kbreset
-                extern  kbqueuebyte
+                extern  kbpoweron
                 extern  kbsendnext
 
 code_reset      code    h'0000'                 ; reset entry point
@@ -62,9 +61,7 @@ waitforosc:     btfss   OSCSTAT, HFIOFL         ; HFINTOSC locked?
                 bra     waitforosc              ; no: wait until it is
 
                 banksel KBSTAT                  ; bank 0
-                call    kbreset                 ; reset keyboard state
-                movlw   RESTESTPASS
-                call    kbqueuebyte             ; queue self-test passed
+                call    kbpoweron               ; initialize keyboard state
 
                 banksel PIE1                    ; bank 1
                 movlw   1<<TMR1GIE | 1<<TMR1IE
