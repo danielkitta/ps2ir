@@ -1,11 +1,13 @@
-# PS/2 IR adapter
+# PS/2 IR adapter project
 
 PICASM = gpasm
 PICLINK = gplink
 
-PICASMFLAGS = -p12f1571
+PROCESSOR = 12f1571
+PICASMFLAGS = -p $(PROCESSOR)
+PICLINKFLAGS = -m -s $(PROCESSOR).lkr
 
-OBJECTS = main.o
+OBJECTS = irdecode.o keyboard.o keycodes.o main.o ps2io.o util.o
 
 all: ps2ir.hex
 
@@ -16,9 +18,10 @@ clean:
 .SUFFIXES: .asm .o
 
 ps2ir.hex: $(OBJECTS)
-	$(PICLINK) -o $@ $(OBJECTS)
+	$(PICLINK) $(PICLINKFLAGS) -o $@ $(OBJECTS)
 
 $(OBJECTS): common.inc
+ps2io.o: util.inc
 
 .asm.o:
 	$(PICASM) $(PICASMFLAGS) -c -o $@ $<
