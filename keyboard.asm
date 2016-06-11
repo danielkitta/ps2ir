@@ -21,6 +21,10 @@ RESACK          equ     h'FA'                   ; command acknowledged
 RESRESEND       equ     h'FE'                   ; request for resend
 RESERROR        equ     h'FF'                   ; buffer overrun or other error
 
+; Prefix codes
+KEYEXTPREFIX    equ     h'E0'                   ; extended scancode prefix byte
+KEYRELPREFIX    equ     h'F0'                   ; key release prefix byte
+
 KEYBOARDID      equ     h'AB83'                 ; keyboard identification code
 BUFLOGSIZE      equ     5                       ; log2 of output buffer size
 
