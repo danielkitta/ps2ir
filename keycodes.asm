@@ -21,7 +21,7 @@ keycodemap:     dt      low DEVICEADR
                 dt      high DEVICEADR
 
                 dt      KEYPOWER                ; 00: Power
-                dt      KEYDELETE               ; 01: Aspect ratio
+                dt      KEYTAB                  ; 01: Aspect ratio
                 dt      KEYVOLUP                ; 02: Volume up
                 dt      KEYVOLDOWN              ; 03: Volume down
                 dt      KEYMUTE                 ; 04: Mute
@@ -44,10 +44,10 @@ keycodemap:     dt      low DEVICEADR
                 dt      KEYENTER                ; 15: OK
                 dt      KEYRIGHT                ; 16: Right
                 dt      0                       ; 17
-                dt      KEYF1                   ; 18: Red
-                dt      KEYF2                   ; 19: Green
-                dt      KEYF3                   ; 1A: Yellow
-                dt      KEYF4                   ; 1B: Blue/Info
+                dt      KEYMYCOMP               ; 18: Red
+                dt      KEYWEB                  ; 19: Green
+                dt      KEYMAIL                 ; 1A: Yellow
+                dt      KEYSEARCH               ; 1B: Blue/Info
                 dt      KEY1                    ; 1C: 1
                 dt      KEY2                    ; 1D: 2
                 dt      KEY3                    ; 1E: 3
@@ -87,7 +87,7 @@ keycodemap:     dt      low DEVICEADR
                 dt      KEY4                    ; 40: 4
                 dt      KEY5                    ; 41: 5
                 dt      KEY6                    ; 42: 6
-                dt      KEYPLAYPAUSE            ; 43: Pause
+                dt      KEYSPACE                ; 43: Pause
                 dt      KEY7                    ; 44: 7
                 dt      KEY8                    ; 45: 8
                 dt      KEY9                    ; 46: 9
@@ -96,8 +96,8 @@ keycodemap:     dt      low DEVICEADR
                 dt      KEYBACK                 ; 49: Rewind
                 dt      KEYFORWARD              ; 4A: Forward
                 dt      KEYNEXTTRACK            ; 4B: Next track
-                dt      KEYRECORD               ; 4C: Record
-                dt      KEYSTOP                 ; 4D: Stop
+                dt      KEYSTOP                 ; 4C: Record
+                dt      KEYSTOPTRACK            ; 4D: Stop
                 dt      KEYPLAYPAUSE            ; 4E: Play
                 dt      0                       ; 4F
                 dt      0                       ; 50

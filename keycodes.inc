@@ -3,6 +3,7 @@
 ; Partial list of AT MF2 untranslated set 2 scancodes.
 ; Source: http://www.win.tue.nl/~aeb/linux/kbd/scancodes-10.html
 ;         http://wiki.osdev.org/PS/2_Keyboard#Scan_Code_Set_2
+;         National Semiconductors AN-0734
 ; Abuse bit 7 to flag scancodes that require an E0 prefix. Only a small
 ; number of keys have scancodes above 7F, and we can do without those.
 ;
@@ -44,6 +45,13 @@ KEYF3           equ     h'04'
 KEYF4           equ     h'0C'
 KEYF5           equ     h'03'
 KEYF6           equ     h'0B'
+KEYF7           equ     h'02'   ; actually 83, but either translates to 41...
+KEYF8           equ     h'0A'
+KEYF9           equ     h'01'
+KEYF10          equ     h'09'
+KEYF11          equ     h'78'
+KEYF12          equ     h'07'
+KEYSCRLOCK      equ     h'7E'
 KEYLSUPER       equ     h'1F' | 1<<KEYEXTBIT
 KEYRSUPER       equ     h'27' | 1<<KEYEXTBIT
 KEYMENU         equ     h'2F' | 1<<KEYEXTBIT
@@ -59,38 +67,33 @@ KEYKP7          equ     h'6C'
 KEYKP8          equ     h'75'
 KEYKP9          equ     h'7D'
 KEYKP0          equ     h'70'
-KEYKPSEP        equ     h'71'           ; decimal separator
+KEYKPDEL        equ     h'71'
 KEYKPADD        equ     h'79'
 KEYKPSUB        equ     h'7B'
 KEYKPMUL        equ     h'7C'
 KEYKPDIV        equ     h'4A' | 1<<KEYEXTBIT
 KEYKPENTER      equ     h'5A' | 1<<KEYEXTBIT
-; "ACPI" keys:
+; ACPI keys:
 KEYSLEEP        equ     h'3F' | 1<<KEYEXTBIT
 KEYPOWER        equ     h'37' | 1<<KEYEXTBIT
 KEYWAKE         equ     h'5E' | 1<<KEYEXTBIT
-; Microsoft/Logitech multimedia keys:
-KEYHELP         equ     h'05' | 1<<KEYEXTBIT
-KEYUNDO         equ     h'3D' | 1<<KEYEXTBIT
-KEYREDO         equ     h'36' | 1<<KEYEXTBIT
-KEYNEW          equ     h'0C' | 1<<KEYEXTBIT
-KEYOPEN         equ     h'03' | 1<<KEYEXTBIT
-KEYCLOSE        equ     h'0B' | 1<<KEYEXTBIT
-KEYSAVE         equ     h'78' | 1<<KEYEXTBIT
-KEYLOGOFF       equ     h'3C' | 1<<KEYEXTBIT
-KEYPLAYPAUSE    equ     h'34' | 1<<KEYEXTBIT
-KEYVOLUP        equ     h'32' | 1<<KEYEXTBIT
+; Microsoft internet/office keys:
 KEYSEARCH       equ     h'10' | 1<<KEYEXTBIT
 KEYFORWARD      equ     h'30' | 1<<KEYEXTBIT
-KEYMEDIA        equ     h'50' | 1<<KEYEXTBIT
-KEYWEB          equ     h'3A' | 1<<KEYEXTBIT
-KEYFAV          equ     h'18' | 1<<KEYEXTBIT
 KEYBACK         equ     h'38' | 1<<KEYEXTBIT
-KEYPREVTRACK    equ     h'15' | 1<<KEYEXTBIT
-KEYMUTE         equ     h'23' | 1<<KEYEXTBIT
-KEYSTOP         equ     h'3B' | 1<<KEYEXTBIT
+KEYSTOP         equ     h'28' | 1<<KEYEXTBIT
 KEYREFRESH      equ     h'20' | 1<<KEYEXTBIT
+KEYFAV          equ     h'18' | 1<<KEYEXTBIT
+KEYWEB          equ     h'3A' | 1<<KEYEXTBIT
+KEYMAIL         equ     h'48' | 1<<KEYEXTBIT
 KEYMYCOMP       equ     h'40' | 1<<KEYEXTBIT
+KEYCALC         equ     h'2B' | 1<<KEYEXTBIT
+; Microsoft multimedia keys:
+KEYMEDIA        equ     h'50' | 1<<KEYEXTBIT
+KEYPLAYPAUSE    equ     h'34' | 1<<KEYEXTBIT
 KEYNEXTTRACK    equ     h'4D' | 1<<KEYEXTBIT
+KEYPREVTRACK    equ     h'15' | 1<<KEYEXTBIT
+KEYSTOPTRACK    equ     h'3B' | 1<<KEYEXTBIT
+KEYVOLUP        equ     h'32' | 1<<KEYEXTBIT
 KEYVOLDOWN      equ     h'21' | 1<<KEYEXTBIT
-KEYRECORD       equ     h'63' | 1<<KEYEXTBIT
+KEYMUTE         equ     h'23' | 1<<KEYEXTBIT
