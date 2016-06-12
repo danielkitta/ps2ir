@@ -92,7 +92,7 @@ keycodemap:     dw      KEYPOWER                ; 00: Power
                 dw      KEYBACK                 ; 49: Rewind
                 dw      KEYFORWARD              ; 4A: Forward
                 dw      KEYNEXTTRACK            ; 4B: Next track
-                dw      KEYSTOP                 ; 4C: Record
+                dw      KEYF4 | ALTMASK         ; 4C: Record
                 dw      KEYSTOPTRACK            ; 4D: Stop
                 dw      KEYPLAYPAUSE            ; 4E: Play
                 dw      0                       ; 4F
