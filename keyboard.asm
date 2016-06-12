@@ -16,11 +16,11 @@ CMDSETLEDS      equ     h'ED'                   ; set keyboard LEDs
 CMDCODESET      equ     h'F0'                   ; get/set scancode set
 
 ; Response codes
+RESERROR        equ     h'00'                   ; buffer overrun or other error
 RESTESTPASS     equ     h'AA'                   ; self test passed
 RESECHO         equ     h'EE'                   ; echo reply
 RESACK          equ     h'FA'                   ; command acknowledged
 RESRESEND       equ     h'FE'                   ; request for resend
-RESERROR        equ     h'FF'                   ; buffer overrun or other error
 
 ; Prefix codes
 KEYEXTPREFIX    equ     h'E0'                   ; extended scancode prefix byte
