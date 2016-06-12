@@ -21,7 +21,7 @@ ps2ir.hex: $(OBJECTS)
 	$(PICLINK) $(PICLINKFLAGS) -o $@ $(OBJECTS)
 
 $(OBJECTS): common.inc
-keycodes.o: keycodes.inc
+keyboard.o keycodes.o: keycodes.inc
 ps2io.o: util.inc
 
 .asm.o:

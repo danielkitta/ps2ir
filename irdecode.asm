@@ -5,8 +5,12 @@
 
                 include "common.inc"
 
+                extern  IRDEVADR                ; symbolic constant
+                extern  KBSCANCODE              ; bank 0
+                extern  KBSCANMODS              ; bank 0
+
                 extern  kbqueuemake
-                extern  kbqueuebrklast
+                extern  kbqueuebreak
                 extern  keycodemap
 
 ; IR pulse and distance length bounds in timer ticks at 31 kHz.
@@ -138,9 +142,9 @@ stopdecode:     bcf     IRSTAT, IRACTIVE        ; mark inactive
 ; and is available for processing.
 ; Pre    : bank 0 active, ints off
 ; Post   : bank 0 active, ints on
-; Input  : IRSTAT
-; Output : IRSTAT
-; Scratch: WREG, STATUS, FSR0, FSR1, NEWCMD
+; Input  : IRSTAT, KBSTAT, KBSCANCODE, KBSCANMODS
+; Output : IRSTAT, KBSTAT, KBSCANCODE, KBSCANMODS
+; Scratch: WREG, STATUS, FSR0, PMCON1, PMADR, PMDAT, NEWCMD
 ;
 irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
                 btfss   IRSTAT, IRPENDING       ; pending IR datagram?
@@ -154,33 +158,45 @@ irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
                 btfsc   NEWCMD, 7               ; and is below 128?
                 bra     breakonly               ; no: skip key press
 
-                movlw   high keycodemap
-                movwf   FSR1H
-                movlw   low keycodemap
-                movwf   FSR1L
-                moviw   FSR1++
+                movlw   low IRDEVADR
                 xorwf   IRADRL, w
                 btfss   STATUS, Z               ; address low matches?
                 bra     breakonly               ; no: skip key press
 
-                moviw   FSR1++
+                movlw   high IRDEVADR
                 xorwf   IRADRH, w
                 btfss   STATUS, Z               ; address high matches?
                 bra     breakonly               ; no: skip key press
 
                 bsf     INTCON, GIE             ; interrupts are safe now
-                call    kbqueuebrklast          ; queue release for last key
-                movf    NEWCMD, w               ; look up IR command code
-                addwf   FSR1L                   ; in scancode table
-                clrw
-                addwfc  FSR1H
-                movf    INDF1, w
-                btfss   STATUS, Z               ; scancode assigned?
-                goto    kbqueuemake             ; yes: queue key press
-                return
+                call    kbqueuebreak            ; queue release for last key
+
+                movlw   low keycodemap
+                addwf   NEWCMD, w
+                banksel PMCON1                  ; bank 3
+                movwf   PMADRL
+                movlw   high keycodemap
+                clrf    PMADRH
+                addwfc  PMADRH
+                clrf    PMCON1
+                bsf     PMCON1, RD              ; look up IR command code
+                nop
+                nop
+                movf    PMDATL, w               ; read scancode byte
+                banksel KBSCANCODE              ; bank 0
+
+                btfsc   STATUS, Z               ; scancode assigned?
+                return                          ; no: ignore key press
+
+                movwf   KBSCANCODE
+                banksel PMDATH                  ; bank 3
+                movf    PMDATH, w               ; read modifier flags
+                banksel KBSCANMODS              ; bank 0
+                movwf   KBSCANMODS
+                goto    kbqueuemake             ; queue key press code
 
 breakonly:      bsf     INTCON, GIE             ; interrupts are safe now
-                goto    kbqueuebrklast          ; queue release for last key
+                goto    kbqueuebreak            ; queue release for last key
 
                 global  irhandlecmd
 

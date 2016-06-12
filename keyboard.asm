@@ -4,6 +4,7 @@
                 subtitle "Keyboard functionality"
 
                 include "common.inc"
+                include "keycodes.inc"
 
                 extern  IRSTAT                  ; bank 0
                 extern  PS2IODATA               ; bank 0
@@ -23,8 +24,8 @@ RESACK          equ     h'FA'                   ; command acknowledged
 RESRESEND       equ     h'FE'                   ; request for resend
 
 ; Prefix codes
-KEYEXTPREFIX    equ     h'E0'                   ; extended scancode prefix byte
-KEYRELPREFIX    equ     h'F0'                   ; key release prefix byte
+EXTPREFIX       equ     h'E0'                   ; extended scancode prefix byte
+BREAKPREFIX     equ     h'F0'                   ; key release prefix byte
 
 KEYBOARDID      equ     h'AB83'                 ; keyboard identification code
 BUFLOGSIZE      equ     5                       ; log2 of output buffer size
@@ -36,10 +37,12 @@ KBOUTWRPOS:     res     1                       ; output queue write index
 KBOUTRDPOS:     res     1                       ; output queue read index
 KBOUTLAST:      res     1                       ; previously sent byte
 KBLASTCMD:      res     1                       ; previously received command
-SCANCODE:       res     1                       ; scancode of key being pressed
+KBSCANCODE:     res     1                       ; scancode of key being pressed
+KBSCANMODS:     res     1                       ; scancode modifier flags
 ARG0:           res     1                       ; 1st saved argument
+ARG1:           res     1                       ; 2nd saved argument
 
-                global  KBSTAT
+                global  KBSTAT, KBSCANCODE, KBSCANMODS
 
 BANK1           udata
 
@@ -117,7 +120,21 @@ kbwantqueue:    btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
                 return                          ; no: done
 
                 bsf     KBSTAT, KBOVERFLOW      ; indicate overflow
-                movlw   RESERROR                ; queue error response
+                movlw   RESERROR
+                goto    kbqueuebyte             ; queue error response
+
+; Append a byte to the keyboard output queue, preceded by a break prefix.
+; Pre    : bank 0 active
+; Post   : bank 0 active
+; Input  : WREG
+; Output : KBSTAT.KBQUEUED
+; Scratch: WREG, STATUS, FSR0, ARG0, ARG1
+;
+queuebreakcode: movwf   ARG1                    ; remember scancode
+                movlw   BREAKPREFIX
+                call    kbqueuebyte             ; queue break prefix
+
+                movf    ARG1, w                 ; queue scancode
 
 ; Append a byte to the keyboard output queue.
 ; Pre    : bank 0 active
@@ -147,13 +164,13 @@ kbqueuebyte:    movwf   ARG0                    ; save byte to be queued
 ;
 kbhandlecmd:    call    ps2recvbyte             ; read in command byte
 
-                clrf    KBOUTWRPOS              ; clear output queue
-                clrf    KBOUTRDPOS
-                bcf     KBSTAT, KBQUEUED
-                bcf     KBSTAT, KBOVERFLOW
-
                 btfsc   KBSTAT, KBIOABORT       ; transfer interrupted?
                 return                          ; yes: ignore
+
+                movlw   ~(1<<KBQUEUED | 1<<KBOVERFLOW | 1<<KBKEYHELD)
+                andwf   KBSTAT
+                clrf    KBOUTWRPOS              ; clear output queue
+                clrf    KBOUTRDPOS
 
                 btfsc   KBSTAT, KBIOERROR       ; I/O error?
                 bra     reqresend               ; yes: request resend
@@ -247,65 +264,123 @@ cmdgetcodeset:  movlw   RESACK                  ; queue acknowledge
 
                 global  kbhandlecmd
 
-; Queue a make code.
+; Queue the make scancodes for the active key and its modifiers.
+; Any modifier make codes are sent first, followed by the make code
+; of the active key.
 ; Pre    : bank 0 active
 ; Post   : bank 0 active
-; Input  : WREG
-; Output : KBSTAT, SCANCODE
+; Input  : KBSTAT, KBSCANCODE, KBSCANMODS
+; Output : KBSTAT
 ; Scratch: WREG, STATUS, FSR0, ARG0
 ;
-kbqueuemake:    btfsc   KBSTAT, KBDISABLE       ; scanning disabled?
+kbqueuemake:    btfss   KBSTAT, KBDISABLE       ; scanning disabled
+                btfsc   KBSTAT, KBEXPECTARG     ; or processing command?
                 return                          ; yes: do nothing
 
-                movwf   SCANCODE
-                movlw   1
-                btfsc   SCANCODE, KEYEXTBIT     ; extended scancode?
-                movlw   2                       ; yes: extra byte for prefix
+                movlw   1                       ; count bytes needed
+                btfsc   KBSCANMODS, MODSHIFT
+                incf    WREG, w
+                btfsc   KBSCANMODS, MODCTRL
+                incf    WREG, w
+                btfsc   KBSCANMODS, MODALT
+                incf    WREG, w
+                btfsc   KBSCANMODS, MODSUPER
+                addlw   2
+                btfsc   KBSCANMODS, MODEXT
+                incf    WREG, w
+
                 call    kbwantqueue
                 btfsc   KBSTAT, KBOVERFLOW      ; would overflow?
                 return                          ; yes: bail out
 
-                bsf     KBSTAT, KBKEYHELD       ; indicate active key press
-                movlw   KEYEXTPREFIX
-                btfsc   SCANCODE, KEYEXTBIT     ; extended scancode?
-                call    kbqueuebyte             ; yes: queue prefix
+                movlw   KEYLSHIFT
+                btfsc   KBSCANMODS, MODSHIFT    ; Shift modifier?
+                call    kbqueuebyte             ; yes: queue Shift scancode
 
-                movlw   (1<<KEYEXTBIT)-1
-                andwf   SCANCODE, w             ; mask out extended flag
+                movlw   KEYLCTRL
+                btfsc   KBSCANMODS, MODCTRL     ; Control modifier?
+                call    kbqueuebyte             ; yes: queue Control scancode
+
+                movlw   KEYLALT
+                btfsc   KBSCANMODS, MODALT      ; Alt modifier?
+                call    kbqueuebyte             ; yes: queue Alt scancode
+
+                btfss   KBSCANMODS, MODSUPER    ; Super modifier?
+                bra     queuekeymake            ; no: skip
+
+                movlw   EXTPREFIX
+                call    kbqueuebyte             ; queue prefix code
+                movlw   low KEYLSUPER
+                call    kbqueuebyte             ; queue Super scancode
+
+queuekeymake:   movlw   EXTPREFIX
+                btfsc   KBSCANMODS, MODEXT      ; extended scancode?
+                call    kbqueuebyte             ; yes: queue prefix code
+
+                bsf     KBSTAT, KBKEYHELD       ; indicate active key press
+                movf    KBSCANCODE, w
                 goto    kbqueuebyte             ; queue key scancode
 
                 global  kbqueuemake
 
-; Queue the break code corresponding to the last queued make code.
+; Queue the break scancodes for the active key and its modifiers.
+; The break code for the active key is sent first, followed by the
+; break codes of any modifiers.
 ; Pre    : bank 0 active
 ; Post   : bank 0 active
-; Input  : SCANCODE
+; Input  : KBSTAT, KBSCANCODE, KBSCANMODS
 ; Output : KBSTAT
-; Scratch: WREG, STATUS, FSR0, ARG0
+; Scratch: WREG, STATUS, FSR0, ARG0, ARG1
 ;
-kbqueuebrklast: btfss   KBSTAT, KBDISABLE       ; scanning disabled
-                btfss   KBSTAT, KBKEYHELD       ; or no active key press?
-                return                          ; yes: do nothing
+kbqueuebreak:   btfss   KBSTAT, KBKEYHELD       ; any active key press?
+                return                          ; no: nothing to do
 
-                movlw   2
-                btfsc   SCANCODE, KEYEXTBIT     ; extended scancode?
-                movlw   3                       ; yes: extra byte for prefix
+                movlw   2                       ; count bytes needed
+                btfsc   KBSCANMODS, MODEXT
+                incf    WREG, w
+                btfsc   KBSCANMODS, MODSUPER
+                addlw   3
+                btfsc   KBSCANMODS, MODALT
+                addlw   2
+                btfsc   KBSCANMODS, MODCTRL
+                addlw   2
+                btfsc   KBSCANMODS, MODSHIFT
+                addlw   2
+
                 call    kbwantqueue
                 btfsc   KBSTAT, KBOVERFLOW      ; would overflow?
                 return                          ; yes: bail out
 
-                bcf     KBSTAT, KBKEYHELD       ; clear active key press
-                movlw   KEYEXTPREFIX
-                btfsc   SCANCODE, KEYEXTBIT     ; extended scancode?
+                movlw   EXTPREFIX
+                btfsc   KBSCANMODS, MODEXT      ; extended scancode?
                 call    kbqueuebyte             ; yes: queue prefix
 
-                movlw   KEYRELPREFIX
-                call    kbqueuebyte             ; queue release prefix
-                movlw   (1<<KEYEXTBIT)-1
-                andwf   SCANCODE, w             ; mask out extended flag
-                goto    kbqueuebyte             ; queue key scancode
+                bcf     KBSTAT, KBKEYHELD       ; clear active key press
+                movf    KBSCANCODE, w
+                call    queuebreakcode          ; queue key break code
 
-                global  kbqueuebrklast
+                btfss   KBSCANMODS, MODSUPER    ; Super modifier?
+                bra     checkaltbreak           ; no: skip
+
+                movlw   EXTPREFIX
+                call    kbqueuebyte             ; queue prefix code
+                movlw   low KEYLSUPER
+                call    queuebreakcode          ; queue Super break code
+
+checkaltbreak:  movlw   KEYLALT
+                btfsc   KBSCANMODS, MODALT      ; Alt modifier?
+                call    queuebreakcode          ; yes: queue Alt break code
+
+                movlw   KEYLCTRL
+                btfsc   KBSCANMODS, MODCTRL     ; Control modifier?
+                call    queuebreakcode          ; yes: queue Control break code
+
+                btfss   KBSCANMODS, MODSHIFT    ; Shift modifier?
+                return                          ; no: done
+                movlw   KEYLSHIFT
+                goto    queuebreakcode          ; yes: queue Shift break code
+
+                global  kbqueuebreak
 
 ; Take the front item from the output queue and send it off.
 ; Pre    : bank 0 active

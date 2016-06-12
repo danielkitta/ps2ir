@@ -32,5 +32,11 @@ IRPENDING                               ; decoded IR datagram pending
 IRRELEASE                               ; any held key should be released
                 endc
 
-; Key code flags
-KEYEXTBIT       equ     7               ; extended scancode flag bit
+; Key modifier flags
+                cblock  0
+MODEXT                                  ; extended code, needs E0 prefix
+MODSHIFT                                ; combine key with Shift modifier
+MODCTRL                                 ; combine key with Control modifier
+MODALT                                  ; combine key with Alt modifier
+MODSUPER                                ; combine key with Super modifier
+                endc

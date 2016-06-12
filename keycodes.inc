@@ -1,5 +1,14 @@
 ; vim:ft=pic:sts=8:sw=8:et:
 
+; Key modifier masks. To be combined with a base scancode byte into
+; a single code word describing a key's scancode and any modifiers.
+;
+EXTMASK         equ     h'100' << MODEXT
+SHIFTMASK       equ     h'100' << MODSHIFT
+CTRLMASK        equ     h'100' << MODCTRL
+ALTMASK         equ     h'100' << MODALT
+SUPERMASK       equ     h'100' << MODSUPER
+
 ; Partial list of AT MF2 untranslated set 2 scancodes.
 ; Source: http://www.win.tue.nl/~aeb/linux/kbd/scancodes-10.html
 ;         http://wiki.osdev.org/PS/2_Keyboard#Scan_Code_Set_2
@@ -26,18 +35,18 @@ KEYRSHIFT       equ     h'59'
 KEYLCTRL        equ     h'14'
 KEYLALT         equ     h'11'
 KEYSPACE        equ     h'29'
-KEYRALT         equ     h'11' | 1<<KEYEXTBIT
-KEYRCTRL        equ     h'14' | 1<<KEYEXTBIT
-KEYINSERT       equ     h'70' | 1<<KEYEXTBIT
-KEYDELETE       equ     h'71' | 1<<KEYEXTBIT
-KEYHOME         equ     h'6C' | 1<<KEYEXTBIT
-KEYEND          equ     h'69' | 1<<KEYEXTBIT
-KEYPAGEUP       equ     h'7D' | 1<<KEYEXTBIT
-KEYPAGEDOWN     equ     h'7A' | 1<<KEYEXTBIT
-KEYLEFT         equ     h'6B' | 1<<KEYEXTBIT
-KEYUP           equ     h'75' | 1<<KEYEXTBIT
-KEYDOWN         equ     h'72' | 1<<KEYEXTBIT
-KEYRIGHT        equ     h'74' | 1<<KEYEXTBIT
+KEYRALT         equ     h'11' | EXTMASK
+KEYRCTRL        equ     h'14' | EXTMASK
+KEYINSERT       equ     h'70' | EXTMASK
+KEYDELETE       equ     h'71' | EXTMASK
+KEYHOME         equ     h'6C' | EXTMASK
+KEYEND          equ     h'69' | EXTMASK
+KEYPAGEUP       equ     h'7D' | EXTMASK
+KEYPAGEDOWN     equ     h'7A' | EXTMASK
+KEYLEFT         equ     h'6B' | EXTMASK
+KEYUP           equ     h'75' | EXTMASK
+KEYDOWN         equ     h'72' | EXTMASK
+KEYRIGHT        equ     h'74' | EXTMASK
 KEYESCAPE       equ     h'76'
 KEYF1           equ     h'05'
 KEYF2           equ     h'06'
@@ -45,16 +54,16 @@ KEYF3           equ     h'04'
 KEYF4           equ     h'0C'
 KEYF5           equ     h'03'
 KEYF6           equ     h'0B'
-KEYF7           equ     h'02'   ; actually 83, but either translates to 41...
+KEYF7           equ     h'83'
 KEYF8           equ     h'0A'
 KEYF9           equ     h'01'
 KEYF10          equ     h'09'
 KEYF11          equ     h'78'
 KEYF12          equ     h'07'
 KEYSCRLOCK      equ     h'7E'
-KEYLSUPER       equ     h'1F' | 1<<KEYEXTBIT
-KEYRSUPER       equ     h'27' | 1<<KEYEXTBIT
-KEYMENU         equ     h'2F' | 1<<KEYEXTBIT
+KEYLSUPER       equ     h'1F' | EXTMASK
+KEYRSUPER       equ     h'27' | EXTMASK
+KEYMENU         equ     h'2F' | EXTMASK
 ; Numeric keypad:
 KEYNUMLOCK      equ     h'77'
 KEYKP1          equ     h'69'
@@ -71,29 +80,37 @@ KEYKPDEL        equ     h'71'
 KEYKPADD        equ     h'79'
 KEYKPSUB        equ     h'7B'
 KEYKPMUL        equ     h'7C'
-KEYKPDIV        equ     h'4A' | 1<<KEYEXTBIT
-KEYKPENTER      equ     h'5A' | 1<<KEYEXTBIT
+KEYKPDIV        equ     h'4A' | EXTMASK
+KEYKPENTER      equ     h'5A' | EXTMASK
 ; ACPI keys:
-KEYSLEEP        equ     h'3F' | 1<<KEYEXTBIT
-KEYPOWER        equ     h'37' | 1<<KEYEXTBIT
-KEYWAKE         equ     h'5E' | 1<<KEYEXTBIT
+KEYSLEEP        equ     h'3F' | EXTMASK
+KEYPOWER        equ     h'37' | EXTMASK
+KEYWAKE         equ     h'5E' | EXTMASK
 ; Microsoft internet/office keys:
-KEYSEARCH       equ     h'10' | 1<<KEYEXTBIT
-KEYFORWARD      equ     h'30' | 1<<KEYEXTBIT
-KEYBACK         equ     h'38' | 1<<KEYEXTBIT
-KEYSTOP         equ     h'28' | 1<<KEYEXTBIT
-KEYREFRESH      equ     h'20' | 1<<KEYEXTBIT
-KEYFAV          equ     h'18' | 1<<KEYEXTBIT
-KEYWEB          equ     h'3A' | 1<<KEYEXTBIT
-KEYMAIL         equ     h'48' | 1<<KEYEXTBIT
-KEYMYCOMP       equ     h'40' | 1<<KEYEXTBIT
-KEYCALC         equ     h'2B' | 1<<KEYEXTBIT
+KEYSEARCH       equ     h'10' | EXTMASK
+KEYFORWARD      equ     h'30' | EXTMASK
+KEYBACK         equ     h'38' | EXTMASK
+KEYSTOP         equ     h'28' | EXTMASK
+KEYREFRESH      equ     h'20' | EXTMASK
+KEYFAV          equ     h'18' | EXTMASK
+KEYWEB          equ     h'3A' | EXTMASK
+KEYMAIL         equ     h'48' | EXTMASK
+KEYMYCOMP       equ     h'40' | EXTMASK
+KEYCALC         equ     h'2B' | EXTMASK
 ; Microsoft multimedia keys:
-KEYMEDIA        equ     h'50' | 1<<KEYEXTBIT
-KEYPLAYPAUSE    equ     h'34' | 1<<KEYEXTBIT
-KEYNEXTTRACK    equ     h'4D' | 1<<KEYEXTBIT
-KEYPREVTRACK    equ     h'15' | 1<<KEYEXTBIT
-KEYSTOPTRACK    equ     h'3B' | 1<<KEYEXTBIT
-KEYVOLUP        equ     h'32' | 1<<KEYEXTBIT
-KEYVOLDOWN      equ     h'21' | 1<<KEYEXTBIT
-KEYMUTE         equ     h'23' | 1<<KEYEXTBIT
+KEYMEDIA        equ     h'50' | EXTMASK
+KEYPLAYPAUSE    equ     h'34' | EXTMASK
+KEYNEXTTRACK    equ     h'4D' | EXTMASK
+KEYPREVTRACK    equ     h'15' | EXTMASK
+KEYSTOPTRACK    equ     h'3B' | EXTMASK
+KEYVOLUP        equ     h'32' | EXTMASK
+KEYVOLDOWN      equ     h'21' | EXTMASK
+KEYMUTE         equ     h'23' | EXTMASK
+
+; Define and export a constant as relocatable symbol.
+;
+DEFSYM          macro   NAME, VALUE
+NAME            udata_ovr VALUE
+NAME:
+                global  NAME
+                endm
