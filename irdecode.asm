@@ -154,8 +154,7 @@ irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
                 comf    IRCMDINV, w
                 movwf   NEWCMD
                 xorwf   IRCMD, w
-                btfsc   STATUS, Z               ; command matches inverse
-                btfsc   NEWCMD, 7               ; and is below 128?
+                btfss   STATUS, Z               ; command matches inverse
                 bra     breakonly               ; no: skip key press
 
                 movlw   low IRDEVADR

@@ -14,7 +14,7 @@
 cdata           code
 
 ; IR command to keyboard scancode lookup table.
-; Must have exactly 128 entries. Unused positions should be set to 0.
+; Must have exactly 256 entries. Unused positions should be set to 0.
 ;
 keycodemap:     dw      KEYPOWER                ; 00: Power
                 dw      KEYTAB                  ; 01: Aspect ratio
@@ -96,54 +96,8 @@ keycodemap:     dw      KEYPOWER                ; 00: Power
                 dw      KEYSTOPTRACK            ; 4D: Stop
                 dw      KEYPLAYPAUSE            ; 4E: Play
                 dw      0                       ; 4F
-                dw      0                       ; 50
-                dw      0                       ; 51
-                dw      0                       ; 52
-                dw      0                       ; 53
-                dw      0                       ; 54
-                dw      0                       ; 55
-                dw      0                       ; 56
-                dw      0                       ; 57
-                dw      0                       ; 58
-                dw      0                       ; 59
-                dw      0                       ; 5A
-                dw      0                       ; 5B
-                dw      0                       ; 5C
-                dw      0                       ; 5D
-                dw      0                       ; 5E
-                dw      0                       ; 5F
-                dw      0                       ; 60
-                dw      0                       ; 61
-                dw      0                       ; 62
-                dw      0                       ; 63
-                dw      0                       ; 64
-                dw      0                       ; 65
-                dw      0                       ; 66
-                dw      0                       ; 67
-                dw      0                       ; 68
-                dw      0                       ; 69
-                dw      0                       ; 6A
-                dw      0                       ; 6B
-                dw      0                       ; 6C
-                dw      0                       ; 6D
-                dw      0                       ; 6E
-                dw      0                       ; 6F
-                dw      0                       ; 70
-                dw      0                       ; 71
-                dw      0                       ; 72
-                dw      0                       ; 73
-                dw      0                       ; 74
-                dw      0                       ; 75
-                dw      0                       ; 76
-                dw      0                       ; 77
-                dw      0                       ; 78
-                dw      0                       ; 79
-                dw      0                       ; 7A
-                dw      0                       ; 7B
-                dw      0                       ; 7C
-                dw      0                       ; 7D
-                dw      0                       ; 7E
-                dw      0                       ; 7F
+
+                fill    0, keycodemap+h'100'-$  ; fill up with zeroes
 
                 global  keycodemap
 
