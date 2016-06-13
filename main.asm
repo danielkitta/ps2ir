@@ -84,7 +84,7 @@ mainloop:       banksel IOCAF                   ; bank 7
                 btfss   PORTA, PS2DAT           ; PS/2 host request?
                 bra     onkbhostreq             ; yes: dispatch to handler
 
-                btfsc   KBSTAT, KBQUEUED        ; keyboard output queued?
+                btfss   KBSTAT, KBEMPTY         ; keyboard output queued?
                 bra     onkbqueued              ; yes: dispatch to handler
 
 entersleep:     bsf     INTCON, IOCIE           ; wake up on I/O change

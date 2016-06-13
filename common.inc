@@ -18,7 +18,7 @@ PS2DAT          equ     RA0             ; PS/2 data pin
                 cblock  0
 KBIOABORT                               ; transfer aborted by host
 KBIOERROR                               ; framing or parity error
-KBQUEUED                                ; output bytes queued
+KBEMPTY                                 ; output buffer is empty
 KBOVERFLOW                              ; output buffer overflow
 KBEXPECTARG                             ; waiting for command argument
 KBDISABLE                               ; disable scanning
