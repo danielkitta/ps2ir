@@ -175,7 +175,7 @@ cycleclk:       btfss   WREG, PS2CLK            ; clock pulled low?
 
 unwindabort:    banksel STKPTR                  ; bank 31
                 decf    STKPTR                  ; unwind: return to caller's caller
-                banksel KBSTAT                  ; bank 0
+                banksel PORTA                   ; bank 0
 
 abortxfer:      bsf     INDF1, PS2DAT           ; release data line
                 bsf     INTCON, GIE             ; re-enable interrupts

@@ -78,7 +78,7 @@ kbreset:        movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
                 movwf   IOCAP                   ; detect PS/2 clock rising edge
                 clrf    IOCAF                   ; clear event flags
 
-                banksel KBSTAT                  ; bank 0
+                banksel PORTA                   ; bank 0
                 return
 
 ; Keyboard power-on reset.

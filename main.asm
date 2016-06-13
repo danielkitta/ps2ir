@@ -60,7 +60,7 @@ main:           banksel ANSELA                  ; bank 3
 waitforosc:     btfss   OSCSTAT, HFIOFL         ; HFINTOSC locked?
                 bra     waitforosc              ; no: wait until it is
 
-                banksel KBSTAT                  ; bank 0
+                banksel PORTA                   ; bank 0
                 call    kbpoweron               ; initialize keyboard state
 
                 banksel PIE1                    ; bank 1

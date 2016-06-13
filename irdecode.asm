@@ -182,7 +182,7 @@ irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
                 nop
                 nop
                 movf    PMDATL, w               ; read scancode byte
-                banksel KBSCANCODE              ; bank 0
+                banksel PORTA                   ; bank 0
 
                 btfsc   STATUS, Z               ; scancode assigned?
                 return                          ; no: ignore key press
@@ -190,7 +190,7 @@ irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
                 movwf   KBSCANCODE
                 banksel PMDATH                  ; bank 3
                 movf    PMDATH, w               ; read modifier flags
-                banksel KBSCANMODS              ; bank 0
+                banksel PORTA                   ; bank 0
                 movwf   KBSCANMODS
                 goto    kbqueuemake             ; queue key press code
 
