@@ -30,11 +30,11 @@ MAXREPDELAY     equ     d'130' * d'31'          ; max repeat delay: 130ms
 BANK0           udata
 
 IRSTAT:         res     1                       ; status flags
-IRADRL:         res     1                       ; received address
-IRADRH:         res     1                       ; extended or inverted address
-IRCMD:          res     1                       ; received command
-IRCMDINV:       res     1                       ; inverted command
-IRBITPOS:       res     1                       ; decoder bit position
+INADRL:         res     1                       ; received address
+INADRH:         res     1                       ; extended or inverted address
+INCMD:          res     1                       ; received command
+INCMDINV:       res     1                       ; inverted command
+INBITPOS:       res     1                       ; decoder bit position
 NEWCMD:         res     1                       ; latest received IR command
 
                 global  IRSTAT
@@ -45,8 +45,8 @@ PROG0           code
 ; of a IR timer pulse event or overflow.
 ; Pre    : bank 0 active
 ; Post   : bank 0 active
-; Output : IRSTAT, IRADRL, IRADRH, IRCMD, IRCMDINV
-; Scratch: WREG, STATUS, IRBITPOS
+; Output : IRSTAT, INADRL, INADRH, INCMD, INCMDINV
+; Scratch: WREG, STATUS, INBITPOS
 ;
 irpulseevent:   bcf     PIR1, TMR1GIF           ; acknowledge pulse event
                 bcf     T1CON, TMR1ON           ; stop timer
@@ -59,7 +59,7 @@ irpulseevent:   bcf     PIR1, TMR1GIF           ; acknowledge pulse event
                 btfss   T1GCON, T1GPOL          ; measuring pulse distance?
                 bra     startpulse              ; no: check for start pulse
 
-                movf    IRBITPOS, w
+                movf    INBITPOS, w
                 btfsc   STATUS, Z               ; bit position 0?
                 bra     startpause              ; yes: check for start pause
 
@@ -69,15 +69,15 @@ irpulseevent:   bcf     PIR1, TMR1GIF           ; acknowledge pulse event
                 bra     stopdecode              ; no: bail out
 
                 addlw   MINBIT0-MINBIT1         ; C = (duration >= min bit 1)
-                rrf     IRCMDINV                ; shift bit into datagram
-                rrf     IRCMD
-                rrf     IRADRH
-                rrf     IRADRL
+                rrf     INCMDINV                ; shift bit into datagram
+                rrf     INCMD
+                rrf     INADRH
+                rrf     INADRL
 
-                btfsc   IRBITPOS, 5             ; 32nd bit reached?
+                btfsc   INBITPOS, 5             ; 32nd bit reached?
                 bra     lastbit                 ; yes: done decoding
 
-nextbit:        incf    IRBITPOS
+nextbit:        incf    INBITPOS
                 movlw   -MAXBIT1                ; overflow if distance >= max
                 movwf   TMR1L                   ; leave TMR1H at -1
                 bsf     T1GCON, T1GGO           ; re-arm timer gate
@@ -93,7 +93,7 @@ startdecode:    movlw   low(-MAXSTARTP)
                 bsf     T1CON, TMR1ON           ; start timer
 
                 bsf     IRSTAT, IRACTIVE        ; mark active
-                clrf    IRBITPOS                ; reset bit position
+                clrf    INBITPOS                ; reset bit position
                 return
 
 startpulse:     comf    TMR1H, w
@@ -151,19 +151,19 @@ irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
                 bra     breakonly               ; no: skip key press
 
                 bcf     IRSTAT, IRPENDING       ; acknowledge IR datagram
-                comf    IRCMDINV, w
+                comf    INCMDINV, w
                 movwf   NEWCMD
-                xorwf   IRCMD, w
+                xorwf   INCMD, w
                 btfss   STATUS, Z               ; command matches inverse
                 bra     breakonly               ; no: skip key press
 
                 movlw   low IRDEVADR
-                xorwf   IRADRL, w
+                xorwf   INADRL, w
                 btfss   STATUS, Z               ; address low matches?
                 bra     breakonly               ; no: skip key press
 
                 movlw   high IRDEVADR
-                xorwf   IRADRH, w
+                xorwf   INADRH, w
                 btfss   STATUS, Z               ; address high matches?
                 bra     breakonly               ; no: skip key press
 

@@ -33,12 +33,12 @@ BUFLOGSIZE      equ     5                       ; log2 of output buffer size
 BANK0           udata
 
 KBSTAT:         res     1                       ; status flags
-KBOUTWRPOS:     res     1                       ; output queue write index
-KBOUTRDPOS:     res     1                       ; output queue read index
-KBOUTLAST:      res     1                       ; previously sent byte
-KBLASTCMD:      res     1                       ; previously received command
 KBSCANCODE:     res     1                       ; scancode of key being pressed
 KBSCANMODS:     res     1                       ; scancode modifier flags
+BUFWRPOS:       res     1                       ; output queue write index
+BUFRDPOS:       res     1                       ; output queue read index
+LASTSENT:       res     1                       ; previously sent byte
+LASTCMD:        res     1                       ; previously received command
 ARG0:           res     1                       ; 1st saved argument
 ARG1:           res     1                       ; 2nd saved argument
 
@@ -46,7 +46,7 @@ ARG1:           res     1                       ; 2nd saved argument
 
 BANK1           udata
 
-KBOUTBUF:       res     1<<BUFLOGSIZE           ; ring buffer for output queue
+OUTBUF:         res     1<<BUFLOGSIZE           ; ring buffer for output queue
 
 PROG0           code
 
@@ -56,7 +56,7 @@ PROG0           code
 ; Output : IRSTAT, KBSTAT
 ; Scratch: WREG, STATUS
 ;
-kbreset:        movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
+resetkb:        movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
                 movwf   T1CON                   ; timer 1: async LFINTOSC 1:1
                 movlw   1<<TMR1GE | 1<<T1GSPM
                 movwf   T1GCON                  ; single pulse mode, negative
@@ -66,9 +66,9 @@ kbreset:        movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
 
                 clrf    IRSTAT                  ; reset IR decode state
                 clrf    KBSTAT                  ; reset PS/2 state
-                clrf    KBOUTWRPOS              ; initialize output queue
-                clrf    KBOUTRDPOS
-                clrf    KBOUTLAST
+                clrf    BUFWRPOS                ; initialize output queue
+                clrf    BUFRDPOS
+                clrf    LASTSENT
 
                 bsf     T1GCON, T1GGO           ; start pulse acquisition
                 bsf     T1GCON, T1GPOL          ; trigger pulse edge
@@ -89,9 +89,9 @@ kbreset:        movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
 ; Output : IRSTAT, KBSTAT
 ; Scratch: WREG, STATUS
 ;
-kbpoweron:      call    kbreset
+kbpoweron:      call    resetkb
                 movlw   RESTESTPASS
-                goto    kbqueuebyte             ; queue self-test passed
+                goto    queuebyte               ; queue self-test passed
 
                 global  kbpoweron
 
@@ -108,12 +108,12 @@ kbpoweron:      call    kbreset
 ; Output : KBSTAT.KBOVERFLOW
 ; Scratch: WREG, STATUS, FSR0, ARG0
 ;
-kbwantqueue:    btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
+preparequeue:   btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
                 return                          ; yes: bail out
 
                 movwf   ARG0                    ; save requested length
-                movf    KBOUTRDPOS, w
-                subwf   KBOUTWRPOS, w
+                movf    BUFRDPOS, w
+                subwf   BUFWRPOS, w
                 iorlw   -1<<BUFLOGSIZE          ; sign extend
                 addwf   ARG0, w
                 btfss   STATUS, C               ; would overflow?
@@ -121,7 +121,7 @@ kbwantqueue:    btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
 
                 bsf     KBSTAT, KBOVERFLOW      ; indicate overflow
                 movlw   RESERROR
-                goto    kbqueuebyte             ; queue error response
+                goto    queuebyte               ; queue error response
 
 ; Append a byte to the keyboard output queue, preceded by a break prefix.
 ; Pre    : bank 0 active
@@ -132,7 +132,7 @@ kbwantqueue:    btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
 ;
 queuebreakcode: movwf   ARG1                    ; remember scancode
                 movlw   BREAKPREFIX
-                call    kbqueuebyte             ; queue break prefix
+                call    queuebyte               ; queue break prefix
 
                 movf    ARG1, w                 ; queue scancode
 
@@ -143,15 +143,15 @@ queuebreakcode: movwf   ARG1                    ; remember scancode
 ; Output : KBSTAT.KBQUEUED
 ; Scratch: WREG, STATUS, FSR0, ARG0
 ;
-kbqueuebyte:    movwf   ARG0                    ; save byte to be queued
-                movlw   KBOUTBUF
-                addwf   KBOUTWRPOS, w           ; compute write address
+queuebyte:      movwf   ARG0                    ; save byte to be queued
+                movlw   OUTBUF
+                addwf   BUFWRPOS, w             ; compute write address
                 clrf    FSR0H
                 movwf   FSR0L
                 movf    ARG0, w
                 movwf   INDF0                   ; write byte to buffer
-                incf    KBOUTWRPOS              ; advance write position
-                bcf     KBOUTWRPOS, BUFLOGSIZE  ; wrap around
+                incf    BUFWRPOS                ; advance write position
+                bcf     BUFWRPOS, BUFLOGSIZE    ; wrap around
 
                 bsf     KBSTAT, KBQUEUED        ; indicate data availability
                 return
@@ -169,8 +169,8 @@ kbhandlecmd:    call    ps2recvbyte             ; read in command byte
 
                 movlw   ~(1<<KBQUEUED | 1<<KBOVERFLOW | 1<<KBKEYHELD)
                 andwf   KBSTAT
-                clrf    KBOUTWRPOS              ; clear output queue
-                clrf    KBOUTRDPOS
+                clrf    BUFWRPOS                ; clear output queue
+                clrf    BUFRDPOS
 
                 btfsc   KBSTAT, KBIOERROR       ; I/O error?
                 bra     reqresend               ; yes: request resend
@@ -179,7 +179,7 @@ kbhandlecmd:    call    ps2recvbyte             ; read in command byte
                 bra     handlearg               ; yes: evaluate
 
                 movf    PS2IODATA, w
-                movwf   KBLASTCMD               ; remember command
+                movwf   LASTCMD                 ; remember command
                 addlw   -CMDSETLEDS
                 btfss   STATUS, C               ; invalid command?
                 bra     reqresend               ; yes: request resend
@@ -205,23 +205,23 @@ kbhandlecmd:    call    ps2recvbyte             ; read in command byte
                 bra     cmdresend               ; FE: resend last byte
                                                 ; FF: reset and self-test
                 bcf     INTCON, GIE
-                call    kbreset                 ; reset keyboard state
+                call    resetkb                 ; reset keyboard state
                 bsf     INTCON, GIE
                 movlw   RESACK
-                call    kbqueuebyte             ; queue acknowledge
+                call    queuebyte               ; queue acknowledge
                 movlw   RESTESTPASS
-                goto    kbqueuebyte             ; queue self-test passed
+                goto    queuebyte               ; queue self-test passed
 
 reqresend:      movlw   RESRESEND               ; ask host to resend byte
-                goto    kbqueuebyte
+                goto    queuebyte
 
 expectarg:      bsf     KBSTAT, KBEXPECTARG     ; prepare for argument
                 movlw   RESACK
-                goto    kbqueuebyte             ; queue acknowledge
+                goto    queuebyte               ; queue acknowledge
 
 handlearg:      bcf     KBSTAT, KBEXPECTARG     ; got expected argument
                 movlw   CMDCODESET
-                xorwf   KBLASTCMD, w
+                xorwf   LASTCMD, w
                 btfss   STATUS, Z               ; command get/set scancode set?
                 bra     ackcommand              ; no: silently ignore
 
@@ -234,33 +234,33 @@ handlearg:      bcf     KBSTAT, KBEXPECTARG     ; got expected argument
                 bra     reqresend               ; no: disallow change
 
 ackcommand:     movlw   RESACK                  ; queue acknowledge
-                goto    kbqueuebyte
+                goto    queuebyte
 
 cmdecho:        movlw   RESECHO                 ; queue echo reply
-                goto    kbqueuebyte
+                goto    queuebyte
 
 cmdidentify:    movlw   RESACK
-                call    kbqueuebyte             ; queue acknowledge
+                call    queuebyte               ; queue acknowledge
                 movlw   high KEYBOARDID
-                call    kbqueuebyte             ; queue keyboard ID
+                call    queuebyte               ; queue keyboard ID
                 movlw   low KEYBOARDID
-                goto    kbqueuebyte
+                goto    queuebyte
 
 cmdscanon:      bcf     KBSTAT, KBDISABLE       ; allow keys to be sent
                 movlw   RESACK
-                goto    kbqueuebyte
+                goto    queuebyte
 
 cmdscanoff:     bsf     KBSTAT, KBDISABLE       ; disallow keys to be sent
                 movlw   RESACK
-                goto    kbqueuebyte
+                goto    queuebyte
 
-cmdresend:      movf    KBOUTLAST, w
-                goto    kbqueuebyte
+cmdresend:      movf    LASTSENT, w
+                goto    queuebyte
 
 cmdgetcodeset:  movlw   RESACK                  ; queue acknowledge
-                call    kbqueuebyte
+                call    queuebyte
                 movlw   2                       ; report fixed scan code set
-                goto    kbqueuebyte
+                goto    queuebyte
 
                 global  kbhandlecmd
 
@@ -289,37 +289,37 @@ kbqueuemake:    btfss   KBSTAT, KBDISABLE       ; scanning disabled
                 btfsc   KBSCANMODS, MODEXT
                 incf    WREG, w
 
-                call    kbwantqueue
+                call    preparequeue
                 btfsc   KBSTAT, KBOVERFLOW      ; would overflow?
                 return                          ; yes: bail out
 
                 movlw   KEYLSHIFT
                 btfsc   KBSCANMODS, MODSHIFT    ; Shift modifier?
-                call    kbqueuebyte             ; yes: queue Shift scancode
+                call    queuebyte               ; yes: queue Shift scancode
 
                 movlw   KEYLCTRL
                 btfsc   KBSCANMODS, MODCTRL     ; Control modifier?
-                call    kbqueuebyte             ; yes: queue Control scancode
+                call    queuebyte               ; yes: queue Control scancode
 
                 movlw   KEYLALT
                 btfsc   KBSCANMODS, MODALT      ; Alt modifier?
-                call    kbqueuebyte             ; yes: queue Alt scancode
+                call    queuebyte               ; yes: queue Alt scancode
 
                 btfss   KBSCANMODS, MODSUPER    ; Super modifier?
                 bra     queuekeymake            ; no: skip
 
                 movlw   EXTPREFIX
-                call    kbqueuebyte             ; queue prefix code
+                call    queuebyte               ; queue prefix code
                 movlw   low KEYLSUPER
-                call    kbqueuebyte             ; queue Super scancode
+                call    queuebyte               ; queue Super scancode
 
 queuekeymake:   movlw   EXTPREFIX
                 btfsc   KBSCANMODS, MODEXT      ; extended scancode?
-                call    kbqueuebyte             ; yes: queue prefix code
+                call    queuebyte               ; yes: queue prefix code
 
                 bsf     KBSTAT, KBKEYHELD       ; indicate active key press
                 movf    KBSCANCODE, w
-                goto    kbqueuebyte             ; queue key scancode
+                goto    queuebyte               ; queue key scancode
 
                 global  kbqueuemake
 
@@ -347,13 +347,13 @@ kbqueuebreak:   btfss   KBSTAT, KBKEYHELD       ; any active key press?
                 btfsc   KBSCANMODS, MODSHIFT
                 addlw   2
 
-                call    kbwantqueue
+                call    preparequeue
                 btfsc   KBSTAT, KBOVERFLOW      ; would overflow?
                 return                          ; yes: bail out
 
                 movlw   EXTPREFIX
                 btfsc   KBSCANMODS, MODEXT      ; extended scancode?
-                call    kbqueuebyte             ; yes: queue prefix
+                call    queuebyte               ; yes: queue prefix
 
                 bcf     KBSTAT, KBKEYHELD       ; clear active key press
                 movf    KBSCANCODE, w
@@ -363,7 +363,7 @@ kbqueuebreak:   btfss   KBSTAT, KBKEYHELD       ; any active key press?
                 bra     checkaltbreak           ; no: skip
 
                 movlw   EXTPREFIX
-                call    kbqueuebyte             ; queue prefix code
+                call    queuebyte               ; queue prefix code
                 movlw   low KEYLSUPER
                 call    queuebreakcode          ; queue Super break code
 
@@ -388,8 +388,8 @@ checkaltbreak:  movlw   KEYLALT
 ; Output : KBSTAT
 ; Scratch: WREG, STATUS, FSR0, ARG0
 ;
-kbsendnext:     movlw   KBOUTBUF
-                addwf   KBOUTRDPOS, w           ; compute read address
+kbsendnext:     movlw   OUTBUF
+                addwf   BUFRDPOS, w             ; compute read address
                 clrf    FSR0H
                 movwf   FSR0L
 
@@ -401,10 +401,10 @@ kbsendnext:     movlw   KBOUTBUF
                 btfsc   KBSTAT, KBIOERROR       ; or other error?
                 return                          ; leave byte queued
 
-                incf    KBOUTRDPOS, w           ; advance read position
+                incf    BUFRDPOS, w             ; advance read position
                 andlw   (1<<BUFLOGSIZE)-1       ; wrap around
-                movwf   KBOUTRDPOS
-                xorwf   KBOUTWRPOS, w
+                movwf   BUFRDPOS
+                xorwf   BUFWRPOS, w
                 btfsc   STATUS, Z               ; output queue empty?
                 bcf     KBSTAT, KBQUEUED        ; yes: indicate status
                 bcf     KBSTAT, KBOVERFLOW
@@ -415,7 +415,7 @@ kbsendnext:     movlw   KBOUTBUF
                 return                          ; yes: do not remember
 
                 movf    INDF0, w
-                movwf   KBOUTLAST               ; remember last byte sent
+                movwf   LASTSENT                ; remember last byte sent
                 return
 
                 global  kbsendnext
