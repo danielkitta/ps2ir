@@ -39,9 +39,12 @@ BUFWRPOS:       res     1                       ; output queue write index
 BUFRDPOS:       res     1                       ; output queue read index
 LASTSENT:       res     1                       ; previously sent byte
 LASTCMD:        res     1                       ; previously received command
-ARG0:           res     1                       ; 1st saved argument
 
                 global  KBSTAT, KBSCANCODE, KBSCANMODS
+
+BANK0OVR        udata_ovr
+
+ARG:            res     1                       ; saved argument
 
 BANK1           udata
 
@@ -110,12 +113,12 @@ kbpoweron:      call    resetkb
 ; Post   : bank 0 active
 ; Input  : WREG, KBSTAT, BUFRDPOS, BUFWRPOS
 ; Output : KBSTAT, FSR0
-; Scratch: WREG, STATUS, ARG0
+; Scratch: WREG, STATUS, ARG
 ;
 preparequeue:   btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
                 return                          ; yes: bail out
 
-                movwf   ARG0                    ; save requested length
+                movwf   ARG                     ; save requested length
                 movlw   OUTBUF
                 addwf   BUFWRPOS, w
                 movwf   FSR0L                   ; set up write pointer
@@ -125,7 +128,7 @@ preparequeue:   btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
                 movf    BUFRDPOS, w
                 subwf   BUFWRPOS, w
                 iorlw   -1<<BUFLOGSIZE          ; sign extend
-                addwf   ARG0, w
+                addwf   ARG, w
                 btfss   STATUS, C               ; would overflow?
                 return                          ; no: done
 
@@ -138,13 +141,13 @@ preparequeue:   btfsc   KBSTAT, KBOVERFLOW      ; already overflown?
 ; Post   : bank 0 active
 ; Input  : WREG, FSR0, BUFWRPOS
 ; Output : FSR0, BUFWRPOS
-; Scratch: WREG, STATUS, ARG0
+; Scratch: WREG, STATUS, ARG
 ;
-bufwritebreak:  movwf   ARG0                    ; remember scancode
+bufwritebreak:  movwf   ARG                     ; remember scancode
                 movlw   BREAKPREFIX
                 call    bufwritebyte            ; queue break prefix
 
-                movf    ARG0, w                 ; queue scancode
+                movf    ARG, w                  ; queue scancode
 
 ; Write a byte to the output buffer. Prior to calling this routine,
 ; preparequeue must be used to set up the queue state for writing.
@@ -166,7 +169,7 @@ bufwritebyte:   movwi   FSR0++                  ; write byte
 ; Pre    : bank 0 active
 ; Post   : bank 0 active
 ; Output : KBSTAT
-; Scratch: WREG, STATUS, FSR0, ARG0
+; Scratch: WREG, STATUS, FSR0, ARG
 ;
 kbhandlecmd:    call    ps2recvbyte             ; read in command byte
 
@@ -280,7 +283,7 @@ cmdgetcodeset:  movlw   RESACK                  ; queue acknowledge
 ; Post   : bank 0 active
 ; Input  : KBSTAT, KBSCANCODE, KBSCANMODS
 ; Output : KBSTAT
-; Scratch: WREG, STATUS, FSR0, ARG0
+; Scratch: WREG, STATUS, FSR0, ARG
 ;
 kbqueuemake:    btfss   KBSTAT, KBDISABLE       ; scanning disabled
                 btfsc   KBSTAT, KBEXPECTARG     ; or processing command?
@@ -339,7 +342,7 @@ queuekeymake:   movlw   EXTPREFIX
 ; Post   : bank 0 active
 ; Input  : KBSTAT, KBSCANCODE, KBSCANMODS
 ; Output : KBSTAT
-; Scratch: WREG, STATUS, FSR0, ARG0
+; Scratch: WREG, STATUS, FSR0, ARG
 ;
 kbqueuebreak:   btfss   KBSTAT, KBKEYHELD       ; any active key press?
                 return                          ; no: nothing to do

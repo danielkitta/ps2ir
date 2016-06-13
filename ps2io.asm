@@ -13,10 +13,13 @@ PS2PERIOD       equ     d'40'                   ; clock period in microseconds
 BANK0           udata
 
 PS2IODATA:      res     1                       ; byte to send or received
-BITCOUNT:       res     1                       ; bit loop counter
-PARITYSUM:      res     1                       ; parity accumulator
 
                 global  PS2IODATA
+
+BANK0OVR        udata_ovr
+
+BITCOUNT:       res     1                       ; bit loop counter
+PARITYSUM:      res     1                       ; parity accumulator
 
 PROG0           code
 

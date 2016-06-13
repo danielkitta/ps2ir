@@ -82,4 +82,5 @@ SECTION    NAME=PROG0      ROM=page0           // ROM code space - page 0
 SECTION    NAME=IDLOCS     ROM=.idlocs         // ID locations
 SECTION    NAME=LINEAR0    RAM=linear0         // Linear Memory
 SECTION    NAME=BANK0      RAM=gpr0            // GPR data space - bank 0
+SECTION    NAME=BANK0OVR   RAM=gpr0            // GPR temp space - bank 0
 SECTION    NAME=BANK1      RAM=gpr1            // GPR data space - bank 1
