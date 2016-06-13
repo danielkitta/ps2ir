@@ -15,6 +15,7 @@
 ; Keyboard commands
 CMDSETLEDS      equ     h'ED'                   ; set keyboard LEDs
 CMDCODESET      equ     h'F0'                   ; get/set scancode set
+CMDRESEND       equ     h'FE'                   ; resend last byte
 
 ; Response codes
 RESERROR        equ     h'00'                   ; buffer overrun or other error
@@ -190,6 +191,7 @@ kbhandlecmd:    call    ps2recvbyte             ; read in command byte
                 btfsc   KBSTAT, KBEXPECTARG     ; argument byte?
                 bra     handlearg               ; yes: evaluate
 
+newcommand:     bcf     KBSTAT, KBEXPECTARG     ; reset command state
                 movf    PS2IODATA, w
                 movwf   LASTCMD                 ; remember command
                 addlw   -CMDSETLEDS
@@ -231,11 +233,19 @@ expectarg:      bsf     KBSTAT, KBEXPECTARG     ; prepare for argument
                 movlw   RESACK
                 goto    bufwritebyte            ; queue acknowledge
 
-handlearg:      bcf     KBSTAT, KBEXPECTARG     ; got expected argument
+handlearg:      movlw   CMDRESEND
+                subwf   PS2IODATA, w
+                btfsc   STATUS, Z               ; request to resend?
+                bra     cmdresend               ; yes: resend last byte
+
+                addlw   CMDRESEND-h'E0'
+                btfsc   STATUS, C               ; argument below E0?
+                bra     newcommand              ; no: interpret as new command
+
                 movlw   CMDCODESET
                 xorwf   LASTCMD, w
                 btfss   STATUS, Z               ; command get/set scancode set?
-                bra     ackcommand              ; no: silently ignore
+                bra     ackargument             ; no: silently ignore
 
                 movf    PS2IODATA, w
                 btfsc   STATUS, Z               ; argument is 0?
@@ -245,6 +255,7 @@ handlearg:      bcf     KBSTAT, KBEXPECTARG     ; got expected argument
                 btfss   STATUS, Z               ; argument is 2?
                 bra     reqresend               ; no: disallow change
 
+ackargument:    bcf     KBSTAT, KBEXPECTARG     ; argument handled
 ackcommand:     movlw   RESACK                  ; queue acknowledge
                 goto    bufwritebyte
 
@@ -269,10 +280,9 @@ cmdscanoff:     bsf     KBSTAT, KBDISABLE       ; disallow keys to be sent
 cmdresend:      movf    LASTSENT, w
                 goto    bufwritebyte
 
-cmdgetcodeset:  movlw   RESACK                  ; queue acknowledge
-                call    bufwritebyte
-                movlw   2                       ; report fixed scan code set
-                goto    bufwritebyte
+cmdgetcodeset:  call    ackargument             ; acknowledge argument
+                movlw   2
+                goto    bufwritebyte            ; report fixed scan code set
 
                 global  kbhandlecmd
 
