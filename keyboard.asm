@@ -179,8 +179,8 @@ kbhandlecmd:    call    ps2recvbyte             ; read in command byte
 
                 clrf    BUFWRPOS                ; clear output queue
                 clrf    BUFRDPOS
-                movlw   ~(1<<KBEMPTY | 1<<KBOVERFLOW | 1<<KBKEYHELD)
-                andwf   KBSTAT                  ; reset key/buffer state
+                bcf     KBSTAT, KBOVERFLOW
+                bcf     KBSTAT, KBEMPTY         ; about to queue something
                 movlw   OUTBUF
                 movwf   FSR0L                   ; prepare write pointer
                 clrf    FSR0H
@@ -295,11 +295,7 @@ cmdgetcodeset:  call    ackargument             ; acknowledge argument
 ; Output : KBSTAT
 ; Scratch: WREG, STATUS, FSR0, ARG
 ;
-kbqueuemake:    btfss   KBSTAT, KBDISABLE       ; scanning disabled
-                btfsc   KBSTAT, KBEXPECTARG     ; or processing command?
-                return                          ; yes: do nothing
-
-                movlw   1                       ; count bytes needed
+kbqueuemake:    movlw   1                       ; count bytes needed
                 btfsc   KBSCANMODS, MODSHIFT
                 incf    WREG, w
                 btfsc   KBSCANMODS, MODCTRL

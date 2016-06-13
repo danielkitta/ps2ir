@@ -74,11 +74,15 @@ mainloop:       banksel IOCAF                   ; bank 7
                 banksel PORTA                   ; bank 0
                 bcf     INTCON, GIE             ; block ints to avoid races
 
+                btfss   KBSTAT, KBDISABLE       ; scanning disabled
+                btfsc   KBSTAT, KBEXPECTARG     ; or waiting for argument?
+                bra     checkps2                ; yes: skip IR processing
+
                 btfss   IRSTAT, IRPENDING       ; IR command available
                 btfsc   IRSTAT, IRRELEASE       ; or key to be released?
                 bra     onircommand             ; yes: dispatch to handler
 
-                btfss   PORTA, PS2CLK           ; PS/2 clock line free?
+checkps2:       btfss   PORTA, PS2CLK           ; PS/2 clock line free?
                 bra     entersleep              ; no: wait for rising edge
 
                 btfss   PORTA, PS2DAT           ; PS/2 host request?
