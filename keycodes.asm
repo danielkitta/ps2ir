@@ -6,8 +6,11 @@
                 include "common.inc"
                 include "keycodes.inc"
 
-; This scancode table maps the codes used by the @sat satellite receiver.
-; The One For All remote direct setup code for this device is 1300 (SAT).
+; This scancode table maps the codes used by the @sat satellite receiver,
+; with a few custom codes added so all buttons on the remote can be mapped
+; to something. The original One For All remote direct setup code for this
+; SAT device is 1300. Setup code 4013 is used for the custom device upgrade
+; installed via the JP1.3 interface.
 ;
                 DEFSYM  IRDEVADR, h'0820'       ; IR device address
 
@@ -17,20 +20,20 @@ cdata           code
 ; Must have exactly 256 entries. Unused positions should be set to 0.
 ;
 keycodemap:     dw      KEYPOWER                ; 00: Power
-                dw      KEYTAB                  ; 01: Aspect ratio
+                dw      KEYTAB                  ; 01: 16:9
                 dw      KEYVOLUP                ; 02: Volume up
                 dw      KEYVOLDOWN              ; 03: Volume down
                 dw      KEYMUTE                 ; 04: Mute
                 dw      0                       ; 05
                 dw      KEYPAGEUP               ; 06: Channel up
                 dw      KEYPAGEDOWN             ; 07: Channel down
-                dw      KEYMEDIA                ; 08: AV
+                dw      KEYMEDIA                ; 08: Source
                 dw      0                       ; 09
                 dw      0                       ; 0A
-                dw      0                       ; 0B
+                dw      KEYSEARCH               ; 0B: Info
                 dw      KEYBACKSPACE            ; 0C: Back
                 dw      KEYLSUPER               ; 0D: Guide
-                dw      0                       ; 0E
+                dw      KEYDELETE               ; 0E: Teletext
                 dw      KEYFAV                  ; 0F: Favorites
                 dw      KEYESCAPE               ; 10: Exit
                 dw      KEYMENU                 ; 11: Menu
@@ -43,11 +46,11 @@ keycodemap:     dw      KEYPOWER                ; 00: Power
                 dw      KEYMYCOMP               ; 18: Red
                 dw      KEYWEB                  ; 19: Green
                 dw      KEYMAIL                 ; 1A: Yellow
-                dw      KEYSEARCH               ; 1B: Blue/Info
+                dw      KEYCALC                 ; 1B: Blue
                 dw      KEY1                    ; 1C: 1
                 dw      KEY2                    ; 1D: 2
                 dw      KEY3                    ; 1E: 3
-                dw      0                       ; 1F
+                dw      KEYSLEEP                ; 1F: Sleep
                 dw      0                       ; 20
                 dw      0                       ; 21
                 dw      0                       ; 22

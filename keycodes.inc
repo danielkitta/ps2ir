@@ -13,8 +13,14 @@ SUPERMASK       equ     h'100' << MODSUPER
 ; Source: http://www.win.tue.nl/~aeb/linux/kbd/scancodes-10.html
 ;         http://wiki.osdev.org/PS/2_Keyboard#Scan_Code_Set_2
 ;         National Semiconductors AN-0734
-; Abuse bit 7 to flag scancodes that require an E0 prefix. Only a small
-; number of keys have scancodes above 7F, and we can do without those.
+; The basic scancodes are all 8 bit wide. Bits outside the byte range
+; are used for modifier flags. The special modifier MODEXT indicates
+; an extended scancode that needs an E0 prefix byte.
+; The symbol names reflect the function of each scancode in the default
+; US keyboard layout, which is not universal. Other keyboard layouts
+; may swap some letters and replace some keys with others. Because of
+; this, the key symbols defined here are mostly limited to control keys
+; and other special function keys, which should generally be safe.
 ;
 KEY1            equ     h'16'
 KEY2            equ     h'1E'
