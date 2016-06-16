@@ -14,6 +14,7 @@
                 extern  KBSTAT                  ; bank 0
 
                 extern  irhandlecmd
+                extern  irinitdec
                 extern  irpulseevent
                 extern  kbhandlecmd
                 extern  kbpoweron
@@ -61,11 +62,18 @@ waitforosc:     btfss   OSCSTAT, HFIOFL         ; HFINTOSC locked?
                 bra     waitforosc              ; no: wait until it is
 
                 banksel PORTA                   ; bank 0
-                call    kbpoweron               ; initialize keyboard state
+                call    irinitdec               ; initialize IR decoder
+                call    kbpoweron               ; keyboard power-on reset
 
                 banksel PIE1                    ; bank 1
                 movlw   1<<TMR1GIE | 1<<TMR1IE
                 movwf   PIE1                    ; enable timer 1 interrupts
+
+                banksel IOCAP                   ; bank 7
+                movlw   1<<PS2CLK
+                movwf   IOCAP                   ; detect PS/2 clock rising edge
+                clrf    IOCAN
+
                 movlw   1<<PEIE
                 movwf   INTCON                  ; enable peripheral interrupts
 

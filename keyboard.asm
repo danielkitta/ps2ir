@@ -6,7 +6,6 @@
                 include "common.inc"
                 include "keycodes.inc"
 
-                extern  IRSTAT                  ; bank 0
                 extern  PS2IODATA               ; bank 0
 
                 extern  ps2recvbyte
@@ -53,46 +52,18 @@ OUTBUF:         res     1<<BUFLOGSIZE           ; ring buffer for output queue
 
 PROG0           code
 
-; Reset keyboard state.
+; Keyboard power-on reset.
+; Initialize keyboard state and place the code for "self-test passed"
+; into the output queue.
 ; Pre    : bank 0 active, ints off
 ; Post   : bank 0 active, ints off
-; Output : IRSTAT, KBSTAT
-; Scratch: WREG, STATUS
+; Output : KBSTAT, LASTSENT, BUFWRPOS, BUFRDPOS
+; Scratch: WREG, STATUS, FSR0
 ;
-resetkb:        movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
-                movwf   T1CON                   ; timer 1: async LFINTOSC 1:1
-                movlw   1<<TMR1GE | 1<<T1GSPM
-                movwf   T1GCON                  ; single pulse mode, negative
-                clrf    TMR1L                   ; reset timer
-                clrf    TMR1H
-                clrf    PIR1                    ; clear event flags
-
-                clrf    IRSTAT                  ; reset IR decode state
-                clrf    KBSTAT                  ; reset PS/2 state
+kbpoweron:      clrf    KBSTAT                  ; clear keyboard state
+                clrf    LASTSENT
                 clrf    BUFWRPOS                ; initialize output queue
                 clrf    BUFRDPOS
-                clrf    LASTSENT
-
-                bsf     T1GCON, T1GGO           ; start pulse acquisition
-                bsf     T1GCON, T1GPOL          ; trigger pulse edge
-
-                banksel IOCAP                   ; bank 7
-                movlw   1<<PS2CLK
-                movwf   IOCAP                   ; detect PS/2 clock rising edge
-                clrf    IOCAF                   ; clear event flags
-
-                banksel PORTA                   ; bank 0
-                return
-
-; Keyboard power-on reset.
-; This does a reset and then places the code for "self-test passed" into
-; the output queue.
-; Pre    : bank 0 active, ints off
-; Post   : bank 0 active, ints off
-; Output : IRSTAT, KBSTAT
-; Scratch: WREG, STATUS
-;
-kbpoweron:      call    resetkb
                 movlw   OUTBUF
                 movwf   FSR0L                   ; prepare write pointer
                 clrf    FSR0H
@@ -218,9 +189,7 @@ newcommand:     bcf     KBSTAT, KBEXPECTARG     ; reset command state
                 bra     expectarg               ; FD: set key make only
                 bra     cmdresend               ; FE: resend last byte
                                                 ; FF: reset and self-test
-                bcf     INTCON, GIE
-                call    resetkb                 ; reset keyboard state
-                bsf     INTCON, GIE
+                clrf    KBSTAT
                 movlw   RESACK
                 call    bufwritebyte            ; queue acknowledge
                 movlw   RESTESTPASS

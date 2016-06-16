@@ -41,6 +41,26 @@ NEWCMD:         res     1                       ; latest received IR command
 
 PROG0           code
 
+; Initialize IR decoder.
+; Pre    : bank 0 active, ints off
+; Post   : bank 0 active, ints off
+; Output : IRSTAT
+; Scratch: WREG, STATUS
+;
+irinitdec:      movlw   3<<TMR1CS0 | 1<<NOT_T1SYNC
+                movwf   T1CON                   ; timer 1: async LFINTOSC 1:1
+                movlw   1<<TMR1GE | 1<<T1GSPM
+                movwf   T1GCON                  ; single pulse mode, negative
+                clrf    TMR1L                   ; reset timer
+                clrf    TMR1H
+                clrf    PIR1                    ; clear event flags
+                clrf    IRSTAT                  ; reset IR decode state
+                bsf     T1GCON, T1GGO           ; start pulse acquisition
+                bsf     T1GCON, T1GPOL          ; trigger pulse edge
+                return
+
+                global  irinitdec
+
 ; Routine invoked from the interrupt handler upon completion
 ; of a IR timer pulse event or overflow.
 ; Pre    : bank 0 active
