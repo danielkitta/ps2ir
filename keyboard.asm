@@ -14,6 +14,7 @@
 ; Keyboard commands
 CMDSETLEDS      equ     h'ED'                   ; set keyboard LEDs
 CMDCODESET      equ     h'F0'                   ; get/set scancode set
+CMDTYPEMATIC    equ     h'F3'                   ; set typematic rate and delay
 CMDRESEND       equ     h'FE'                   ; resend last byte
 
 ; Response codes
@@ -29,12 +30,15 @@ BREAKPREFIX     equ     h'F0'                   ; key release prefix byte
 
 KEYBOARDID      equ     h'AB83'                 ; keyboard identification code
 BUFLOGSIZE      equ     5                       ; log2 of output buffer size
+DEFREPDELAY     equ     500/125                 ; default auto-repeat delay
 
 BANK0           udata
 
 KBSTAT:         res     1                       ; status flags
 KBSCANCODE:     res     1                       ; scancode of key being pressed
 KBSCANMODS:     res     1                       ; scancode modifier flags
+REPDELAY:       res     1                       ; typematic delay in 125ms units
+REPCOUNT:       res     1                       ; auto-repeat tick counter
 BUFWRPOS:       res     1                       ; output queue write index
 BUFRDPOS:       res     1                       ; output queue read index
 LASTSENT:       res     1                       ; previously sent byte
@@ -61,6 +65,8 @@ PROG0           code
 ; Scratch: WREG, STATUS, FSR0
 ;
 kbpoweron:      clrf    KBSTAT                  ; clear keyboard state
+                movlw   DEFREPDELAY
+                movwf   REPDELAY                ; set default repeat delay
                 clrf    LASTSENT
                 clrf    BUFWRPOS                ; initialize output queue
                 clrf    BUFRDPOS
@@ -179,7 +185,7 @@ newcommand:     bcf     KBSTAT, KBEXPECTARG     ; reset command state
                 bra     expectarg               ; F3: set typematic rate/delay
                 bra     cmdscanon               ; F4: enable scanning
                 bra     cmdscanoff              ; F5: disable scanning
-                bra     ackcommand              ; F6: set default parameters
+                bra     cmddefaults             ; F6: set default parameters
                 bra     ackcommand              ; F7: set all typematic/auto
                 bra     ackcommand              ; F8: set all make/release
                 bra     ackcommand              ; F9: set all make only
@@ -190,8 +196,7 @@ newcommand:     bcf     KBSTAT, KBEXPECTARG     ; reset command state
                 bra     cmdresend               ; FE: resend last byte
                                                 ; FF: reset and self-test
                 clrf    KBSTAT
-                movlw   RESACK
-                call    bufwritebyte            ; queue acknowledge
+                call    cmddefaults             ; apply default settings
                 movlw   RESTESTPASS
                 goto    bufwritebyte            ; queue self-test passed
 
@@ -211,8 +216,12 @@ handlearg:      movlw   CMDRESEND
                 btfsc   STATUS, C               ; argument below E0?
                 bra     newcommand              ; no: interpret as new command
 
-                movlw   CMDCODESET
+                movlw   CMDTYPEMATIC
                 xorwf   LASTCMD, w
+                btfsc   STATUS, Z               ; set typematic rate/delay?
+                bra     cmdsetdelay             ; yes: extract parameter
+
+                xorlw   CMDTYPEMATIC^CMDCODESET
                 btfss   STATUS, Z               ; command get/set scancode set?
                 bra     ackargument             ; no: silently ignore
 
@@ -243,17 +252,58 @@ cmdscanon:      bcf     KBSTAT, KBDISABLE       ; allow keys to be sent
                 goto    bufwritebyte
 
 cmdscanoff:     bsf     KBSTAT, KBDISABLE       ; disallow keys to be sent
+cmddefaults:    movlw   DEFREPDELAY
+                movwf   REPDELAY                ; set default repeat delay
                 movlw   RESACK
                 goto    bufwritebyte
 
 cmdresend:      movf    LASTSENT, w
                 goto    bufwritebyte
 
+cmdsetdelay:    swapf   PS2IODATA, w            ; extract delay (scaled by 2)
+                andlw   b'00000110'             ; ignore repeat rate bits
+                addlw   2                       ; offset by 250ms base value
+                movwf   REPDELAY                ; store setting
+                goto    ackargument
+
 cmdgetcodeset:  call    ackargument             ; acknowledge argument
                 movlw   2
                 goto    bufwritebyte            ; report fixed scan code set
 
                 global  kbhandlecmd
+
+; Routine invoked from the main loop on repeat interval ticks, if no other
+; input events are currently pending. If a key press is currently active and
+; the auto-repeat delay has passed, queue the key's make scancode without
+; any modifiers. The repeat tick interval is expected to be roughly between
+; 100ms to 120ms, which matches the repeat interval of the NEC IR protocol.
+; Pre    : bank 0 active
+; Post   : bank 0 active
+; Input  : KBSTAT, KBSCANCODE, KBSCANMODS
+; Output : KBSTAT
+; Scratch: WREG, STATUS, FSR0, ARG
+;
+kbautorepeat:   btfsc   KBSTAT, KBKEYHELD       ; a key press is active
+                btfsc   KBSCANMODS, MODONCE     ; and the key is repeating?
+                return                          ; no: nothing to do
+
+                movf    REPDELAY, w
+                subwf   REPCOUNT, w
+                btfss   STATUS, C               ; repeat count < delay?
+                bra     countrepeat             ; yes: increment and return
+
+                movlw   1                       ; count bytes needed
+                btfsc   KBSCANMODS, MODEXT
+                movlw   2
+                call    preparequeue
+                btfss   KBSTAT, KBOVERFLOW      ; would overflow?
+                goto    queuekeymake            ; no: queue make scancode
+                return
+
+countrepeat:    incf    REPCOUNT                ; count repeat event
+                return                          ; wait for next tick
+
+                global  kbautorepeat
 
 ; Queue the make scancodes for the active key and its modifiers.
 ; Any modifier make codes are sent first, followed by the make code
@@ -280,6 +330,8 @@ kbqueuemake:    movlw   1                       ; count bytes needed
                 btfsc   KBSTAT, KBOVERFLOW      ; would overflow?
                 return                          ; yes: bail out
 
+                bsf     KBSTAT, KBKEYHELD       ; indicate active key press
+                clrf    REPCOUNT                ; reset auto-repeat counter
                 movlw   KEYLSHIFT
                 btfsc   KBSCANMODS, MODSHIFT    ; Shift modifier?
                 call    bufwritebyte            ; yes: queue Shift scancode
@@ -304,7 +356,6 @@ queuekeymake:   movlw   EXTPREFIX
                 btfsc   KBSCANMODS, MODEXT      ; extended scancode?
                 call    bufwritebyte            ; yes: queue prefix code
 
-                bsf     KBSTAT, KBKEYHELD       ; indicate active key press
                 movf    KBSCANCODE, w
                 goto    bufwritebyte            ; queue key scancode
 

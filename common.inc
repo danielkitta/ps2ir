@@ -29,12 +29,14 @@ KBKEYHELD                               ; a key is currently being held down
                 cblock  0
 IRACTIVE                                ; start pulse detected, decoding
 IRPENDING                               ; decoded IR datagram pending
+IRREPEAT                                ; held key repeat interval tick
 IRRELEASE                               ; any held key should be released
                 endc
 
 ; Key modifier flags
                 cblock  0
 MODEXT                                  ; extended code, needs E0 prefix
+MODONCE                                 ; disable auto-repeat of key
 MODSHIFT                                ; combine key with Shift modifier
 MODCTRL                                 ; combine key with Control modifier
 MODALT                                  ; combine key with Alt modifier

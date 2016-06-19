@@ -4,6 +4,7 @@
 ; a single code word describing a key's scancode and any modifiers.
 ;
 EXTMASK         equ     h'100' << MODEXT
+ONCEMASK        equ     h'100' << MODONCE
 SHIFTMASK       equ     h'100' << MODSHIFT
 CTRLMASK        equ     h'100' << MODCTRL
 ALTMASK         equ     h'100' << MODALT
@@ -89,9 +90,9 @@ KEYKPMUL        equ     h'7C'
 KEYKPDIV        equ     h'4A' | EXTMASK
 KEYKPENTER      equ     h'5A' | EXTMASK
 ; ACPI keys:
-KEYSLEEP        equ     h'3F' | EXTMASK
-KEYPOWER        equ     h'37' | EXTMASK
-KEYWAKE         equ     h'5E' | EXTMASK
+KEYSLEEP        equ     h'3F' | EXTMASK | ONCEMASK
+KEYPOWER        equ     h'37' | EXTMASK | ONCEMASK
+KEYWAKE         equ     h'5E' | EXTMASK | ONCEMASK
 ; Microsoft internet/office keys:
 KEYSEARCH       equ     h'10' | EXTMASK
 KEYFORWARD      equ     h'30' | EXTMASK

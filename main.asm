@@ -16,6 +16,7 @@
                 extern  irhandlecmd
                 extern  irinitdec
                 extern  irpulseevent
+                extern  kbautorepeat
                 extern  kbhandlecmd
                 extern  kbpoweron
                 extern  kbsendnext
@@ -90,6 +91,9 @@ mainloop:       banksel IOCAF                   ; bank 7
                 btfsc   IRSTAT, IRRELEASE       ; or key to be released?
                 bra     onircommand             ; yes: dispatch to handler
 
+                btfsc   IRSTAT, IRREPEAT        ; IR command repeat tick?
+                bra     onirrepeat              ; yes: dispatch to handler
+
 checkps2:       btfss   PORTA, PS2CLK           ; PS/2 clock line free?
                 bra     entersleep              ; no: wait for rising edge
 
@@ -106,6 +110,11 @@ entersleep:     bsf     INTCON, IOCIE           ; wake up on I/O change
                 bra     mainloop
 
 onircommand:    call    irhandlecmd             ; returns with ints enabled
+                bra     mainloop
+
+onirrepeat:     bcf     IRSTAT, IRREPEAT        ; acknowledge repeat event
+                bsf     INTCON, GIE             ; re-enable interrupts
+                call    kbautorepeat
                 bra     mainloop
 
 onkbhostreq:    bsf     INTCON, GIE             ; re-enable interrupts

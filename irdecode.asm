@@ -132,11 +132,13 @@ startpause:     movlw   MAXSTARTD-MINREPD
                 btfss   STATUS, C               ; distance >= minimum?
                 bra     stopdecode              ; no: bail out
 
+                bsf     IRSTAT, IRREPEAT
                 addlw   MINREPD-MINSTARTD
                 btfss   STATUS, C               ; distance >= min start bit?
                 bra     timerelease             ; no: repeat code
 
                 bcf     IRSTAT, IRPENDING       ; withdraw previous datagram
+                bcf     IRSTAT, IRREPEAT        ; withdraw pending repeat
                 bra     nextbit                 ; wait for first data bit
 
 lastbit:        bsf     IRSTAT, IRPENDING       ; indicate datagram availability
@@ -167,6 +169,7 @@ stopdecode:     bcf     IRSTAT, IRACTIVE        ; mark inactive
 ; Scratch: WREG, STATUS, FSR0, PMCON1, PMADR, PMDAT, NEWCMD
 ;
 irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
+                bcf     IRSTAT, IRREPEAT        ; ignore still pending repeat
                 btfss   IRSTAT, IRPENDING       ; pending IR datagram?
                 bra     breakonly               ; no: skip key press
 
@@ -182,13 +185,13 @@ irhandlecmd:    bcf     IRSTAT, IRRELEASE       ; acknowledge release request
                 btfss   STATUS, Z               ; address low matches?
                 bra     breakonly               ; no: skip key press
 
-                movlw   high IRDEVADR
-                xorwf   INADRH, w
-                btfss   STATUS, Z               ; address high matches?
-                bra     breakonly               ; no: skip key press
-
+                movf    INADRH, w
                 bsf     INTCON, GIE             ; interrupts are safe now
-                call    kbqueuebreak            ; queue release for last key
+
+                xorlw   high IRDEVADR
+                btfss   STATUS, Z               ; address high matches?
+                goto    kbqueuebreak            ; no: release last and return
+                call    kbqueuebreak            ; else continue after release
 
                 movlw   low keycodemap
                 addwf   NEWCMD, w
