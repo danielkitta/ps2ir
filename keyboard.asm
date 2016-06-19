@@ -15,6 +15,8 @@
 CMDSETLEDS      equ     h'ED'                   ; set keyboard LEDs
 CMDCODESET      equ     h'F0'                   ; get/set scancode set
 CMDTYPEMATIC    equ     h'F3'                   ; set typematic rate and delay
+CMDKEYSAUTO     equ     h'FB'                   ; set keys to auto-repeat
+CMDKEYSMAKE     equ     h'FD'                   ; set keys to make only
 CMDRESEND       equ     h'FE'                   ; resend last byte
 
 ; Response codes
@@ -187,12 +189,12 @@ newcommand:     bcf     KBSTAT, KBEXPECTARG     ; reset command state
                 bra     cmdscanoff              ; F5: disable scanning
                 bra     cmddefaults             ; F6: set default parameters
                 bra     ackcommand              ; F7: set all typematic/auto
-                bra     ackcommand              ; F8: set all make/release
+                bra     ackcommand              ; F8: set all make/break
                 bra     ackcommand              ; F9: set all make only
-                bra     ackcommand              ; FA: set all tm/auto/make/rel
-                bra     expectarg               ; FB: set key typematic/auto
-                bra     expectarg               ; FC: set key make/release
-                bra     expectarg               ; FD: set key make only
+                bra     ackcommand              ; FA: set all tm/auto/make/brk
+                bra     expectarg               ; FB: set keys typematic/auto
+                bra     expectarg               ; FC: set keys make/break
+                bra     expectarg               ; FD: set keys make only
                 bra     cmdresend               ; FE: resend last byte
                                                 ; FF: reset and self-test
                 clrf    KBSTAT
@@ -216,14 +218,19 @@ handlearg:      movlw   CMDRESEND
                 btfsc   STATUS, C               ; argument below E0?
                 bra     newcommand              ; no: interpret as new command
 
-                movlw   CMDTYPEMATIC
-                xorwf   LASTCMD, w
+                movlw   CMDKEYSAUTO
+                subwf   LASTCMD, w
+                addlw   CMDKEYSAUTO-CMDKEYSMAKE-1
+                btfss   STATUS, C               ; set key type ... command?
+                bra     ackcommand              ; yes: ack but expect more args
+
+                addlw   CMDKEYSMAKE+1-CMDTYPEMATIC
                 btfsc   STATUS, Z               ; set typematic rate/delay?
                 bra     cmdsetdelay             ; yes: extract parameter
 
-                xorlw   CMDTYPEMATIC^CMDCODESET
+                addlw   CMDTYPEMATIC-CMDCODESET
                 btfss   STATUS, Z               ; command get/set scancode set?
-                bra     ackargument             ; no: silently ignore
+                bra     ackargument             ; no: acknowledge but ignore
 
                 movf    PS2IODATA, w
                 btfsc   STATUS, Z               ; argument is 0?
