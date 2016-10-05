@@ -125,7 +125,7 @@ waitforstop:    WAITUS  PS2PERIOD/2, 5
                 bcf     INDF1, PS2CLK           ; pull clock line low
                 nop                             ; match cycles with prologue
 
-                btfsc   INDF1, PS2DAT           ; acknowlege sent?
+                btfsc   INDF1, PS2DAT           ; acknowledge sent?
                 bra     waitforstop             ; no: do another cycle
 
                 btfss   PARITYSUM, 7            ; parity matches?
