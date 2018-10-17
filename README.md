@@ -76,6 +76,6 @@ the function code mapping, this remote control definition file also sets
 the device address used by the remote.
 
 In addition to the base scancode, each entry in the look-up table also allows
-for various bits to configure the scancode type type, whether to send break
-codes on key release, and which modifier key scancodes to send along with the
-base scancode.
+for various bits to configure the scancode type, whether to send break codes
+on key release, and which modifier key scancodes to send along with the base
+scancode.
